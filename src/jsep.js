@@ -109,8 +109,8 @@
 			return (ch === 36) || (ch === 95) || // `$` and `_`
 					(ch >= 65 && ch <= 90) || // A...Z
 					(ch >= 97 && ch <= 122) || // a...z
-					(value_types.indexOf('%') > 0 && (ch == 37)) || 
-                    (ch >= 128 && !binary_ops[String.fromCharCode(ch)]); // any non-ASCII that is not an operator
+					(ch >= 128 && !binary_ops[String.fromCharCode(ch)]) // any non-ASCII that is not an operator
+					|| (getValueType(String.fromCharCode(ch))); // any single-char value type identifier 
 		},
 		isIdentifierPart = function(ch) {
 			return (ch === 36) || (ch === 95) || // `$` and `_`
@@ -118,6 +118,26 @@
 					(ch >= 97 && ch <= 122) || // a...z
 					(ch >= 48 && ch <= 57) || // 0...9
                     (ch >= 128 && !binary_ops[String.fromCharCode(ch)]); // any non-ASCII that is not an operator
+		},
+
+
+		getValueType = function(identifier) {
+			var result = null;
+			var aliasIdx = -1;
+			value_types.forEach(valueType => {
+				aliasIdx = valueType.aliases.map(alias => alias.toLowerCase()).indexOf(identifier.toLowerCase());
+				if (aliasIdx >= 0) {
+					result = {
+						type: VALUE_TYPE,
+						value: valueType.id,
+						id: valueType.id,
+						raw: identifier
+					};
+				}
+			});
+
+			return result;
+	
 		},
 
 		// Parsing
@@ -385,13 +405,9 @@
 						throwError('Unclosed quote after "'+str+'"', index);
 					}
 
-					var lower_str = str.toLowerCase();
-					if (value_types.indexOf(lower_str) > 0) {
-						return {
-							type: VALUE_TYPE,
-							value: lower_str,
-							raw: lower_str
-						};
+					var valueType = getValueType(str);
+					if (valueType) {
+						return valueType;
 					}
 
 					return {
@@ -423,14 +439,9 @@
 						}
 					}
 					identifier = expr.slice(start, index);
-					var lower_identifier = identifier.toLowerCase();
-					
-					if (value_types.indexOf(lower_identifier) > 0) {
-						return {
-							type: VALUE_TYPE,
-							value: lower_identifier,
-							raw: identifier
-						};
+					var valueType = getValueType(identifier);
+					if (valueType) {
+						return valueType;
 					} else if(literals.hasOwnProperty(identifier)) {
 						return {
 							type: LITERAL,
@@ -595,24 +606,24 @@
 
 		/**
 	 * @method jsep.addValueType
-	 * @param {string} name The name of the literal to add
+	 * @param {*} valueType The value type object
 	 * @return jsep
 	 */
-	jsep.addValueType = function (name) {
-		value_types.push(name.toLowerCase());
+	jsep.addValueType = function (valueType) {
+		value_types.push(valueType);
 		return this;
 	};
 
 
 	/**
 	 * @method jsep.removeValueType
-	 * @param {string} name The name of the unary op to remove
+	 * @param {string} id The id of the value type to remove
 	 * @return jsep
 	 */
-	jsep.removeValueType = function (name) {
-		var idx = value_types.indexOf(name);
+	jsep.removeValueType = function (id) {
+		var idx = value_types.map(vt => vt.id).indexOf(id);
 		if (idx < 0) {
-			console.log("Value type " + name + " not registered");
+			console.log("Value type '" + id + "' not registered");
 			return this;
 		}
 		value_types.splice(idx, 1);
