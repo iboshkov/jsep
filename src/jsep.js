@@ -1,7 +1,6 @@
 //     JavaScript Expression Parser (JSEP) <%= version %>
 //     JSEP may be freely distributed under the MIT License
 //     http://jsep.from.so/
-
 /*global module: true, exports: true, console: true */
 (function (root) {
 	'use strict';
@@ -131,7 +130,7 @@
 				charCodeAtFunc = expr.charCodeAt,
 				exprI = function(i) { return charAtFunc.call(expr, i); },
 				exprICode = function(i) { return charCodeAtFunc.call(expr, i); },
-				isWhitespace = function (i) { return i === 32 || i === 9 || i === 10 || i === 13 },
+				isWhitespace = function (i) { return i === 32 || i === 9 || i === 10 || i === 13; },
 				length = expr.length,
 
 				/* 
@@ -328,7 +327,7 @@
 					
 					// Try to get a value type after getting the numeric literal
 					var gobbledSpaces = gobbleSpaces();
-					var valueType = undefined;
+					var valueType = null;
 					chCode = exprICode(index);
 					// Check to make sure this isn't a variable name that start with a number (123abc)
 					if(isIdentifierStart(chCode)) {
@@ -337,8 +336,10 @@
 							valueType = identifier;
 						} else {
 							// No space between number and start of non-value type identifier.
-							gobbledSpaces == 0 && throwError('Variable names cannot start with a number (' +
-							number + exprI(index) + ')', index);
+							if(gobbledSpaces == 0) {
+								throwError('Variable names cannot start with a number (' +
+									number + exprI(index) + ')', index);
+							} 
 						}
 					} else if(chCode === PERIOD_CODE) {
 						throwError('Unexpected period', index);
@@ -383,12 +384,12 @@
 					}
 
 					var lower_str = str.toLowerCase();
-					if (value_types.includes(lower_str)) {
+					if (value_types.indexOf(lower_str) > 0) {
 						return {
 							type: VALUE_TYPE,
 							value: lower_str,
 							raw: lower_str
-						}
+						};
 					}
 
 					return {
@@ -422,12 +423,12 @@
 					identifier = expr.slice(start, index);
 					var lower_identifier = identifier.toLowerCase();
 					
-					if (value_types.includes(lower_identifier)) {
+					if (value_types.indexOf(lower_identifier) > 0) {
 						return {
 							type: VALUE_TYPE,
 							value: lower_identifier,
 							raw: identifier
-						}
+						};
 					} else if(literals.hasOwnProperty(identifier)) {
 						return {
 							type: LITERAL,
@@ -607,9 +608,9 @@
 	 * @return jsep
 	 */
 	jsep.removeValueType = function (name) {
-		const idx = value_types.indexOf(name);
+		var idx = value_types.indexOf(name);
 		if (idx < 0) {
-			console.log(`Value type ${name} not registered`);
+			console.log("Value type " + name + " not registered");
 			return this;
 		}
 		value_types.splice(idx, 1);
