@@ -131,7 +131,7 @@
 				charCodeAtFunc = expr.charCodeAt,
 				exprI = function(i) { return charAtFunc.call(expr, i); },
 				exprICode = function(i) { return charCodeAtFunc.call(expr, i); },
-				isWhitespace = function (i) { return i === 32 || i === 9 },
+				isWhitespace = function (i) { return i === 32 || i === 9 || i === 10 || i === 13 },
 				length = expr.length,
 
 				/* 

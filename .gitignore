@@ -3,3 +3,4 @@
 node_modules
 *.zip
 annotated_source/
+build/
