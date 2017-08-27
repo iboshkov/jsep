@@ -14,6 +14,7 @@
 		IDENTIFIER = 'Identifier',
 		MEMBER_EXP = 'MemberExpression',
 		LITERAL = 'Literal',
+		VALUE_TYPE = 'ValueType',
 		THIS_EXP = 'ThisExpression',
 		CALL_EXP = 'CallExpression',
 		UNARY_EXP = 'UnaryExpression',
@@ -80,6 +81,10 @@
 			'false': false,
 			'null': null
 		},
+
+		// Value types, none by default
+		value_types = [],
+
 	// Except for `this`, which is special. This could be changed to something like `'self'` as well
 		this_str = 'this',
 	// Returns the precedence of a binary operator or `0` if it isn't a binary operator
@@ -126,15 +131,21 @@
 				charCodeAtFunc = expr.charCodeAt,
 				exprI = function(i) { return charAtFunc.call(expr, i); },
 				exprICode = function(i) { return charCodeAtFunc.call(expr, i); },
+				isWhitespace = function (i) { return i === 32 || i === 9 },
 				length = expr.length,
 
-				// Push `index` up to the next non-space character
-				gobbleSpaces = function() {
+				/* 
+					Push `index` up to the next non-space character
+					and returns the number of traversed characters
+				*/
+				gobbleSpaces = function () {
+					var startIdx = index;
 					var ch = exprICode(index);
 					// space or tab
-					while(ch === 32 || ch === 9) {
+					while (isWhitespace(ch)) {
 						ch = exprICode(++index);
 					}
+					return index - startIdx; // Number of gobbled spaces
 				},
 				
 				// The main parsing function. Much of this code is dedicated to ternary expressions
@@ -315,12 +326,20 @@
 						}
 					}
 					
-
+					// Try to get a value type after getting the numeric literal
+					var gobbledSpaces = gobbleSpaces();
+					var valueType = undefined;
 					chCode = exprICode(index);
 					// Check to make sure this isn't a variable name that start with a number (123abc)
 					if(isIdentifierStart(chCode)) {
-						throwError('Variable names cannot start with a number (' +
-									number + exprI(index) + ')', index);
+						var identifier = gobbleIdentifier();
+						if (identifier.type === VALUE_TYPE) {
+							valueType = identifier;
+						} else {
+							// No space between number and start of non-value type identifier.
+							gobbledSpaces == 0 && throwError('Variable names cannot start with a number (' +
+							number + exprI(index) + ')', index);
+						}
 					} else if(chCode === PERIOD_CODE) {
 						throwError('Unexpected period', index);
 					}
@@ -363,6 +382,15 @@
 						throwError('Unclosed quote after "'+str+'"', index);
 					}
 
+					var lower_str = str.toLowerCase();
+					if (value_types.includes(lower_str)) {
+						return {
+							type: VALUE_TYPE,
+							value: lower_str,
+							raw: lower_str
+						}
+					}
+
 					return {
 						type: LITERAL,
 						value: str,
@@ -392,8 +420,15 @@
 						}
 					}
 					identifier = expr.slice(start, index);
-
-					if(literals.hasOwnProperty(identifier)) {
+					var lower_identifier = identifier.toLowerCase();
+					
+					if (value_types.includes(lower_identifier)) {
+						return {
+							type: VALUE_TYPE,
+							value: lower_identifier,
+							raw: identifier
+						}
+					} else if(literals.hasOwnProperty(identifier)) {
 						return {
 							type: LITERAL,
 							value: literals[identifier],
@@ -554,6 +589,32 @@
 	// To be filled in by the template
 	jsep.version = '<%= version %>';
 	jsep.toString = function() { return 'JavaScript Expression Parser (JSEP) v' + jsep.version; };
+
+		/**
+	 * @method jsep.addValueType
+	 * @param {string} name The name of the literal to add
+	 * @return jsep
+	 */
+	jsep.addValueType = function (name) {
+		value_types.push(name.toLowerCase());
+		return this;
+	};
+
+
+	/**
+	 * @method jsep.removeValueType
+	 * @param {string} name The name of the unary op to remove
+	 * @return jsep
+	 */
+	jsep.removeValueType = function (name) {
+		const idx = value_types.indexOf(name);
+		if (idx < 0) {
+			console.log(`Value type ${name} not registered`);
+			return this;
+		}
+		value_types.splice(idx, 1);
+		return this;
+	};
 
 	/**
 	 * @method jsep.addUnaryOp
